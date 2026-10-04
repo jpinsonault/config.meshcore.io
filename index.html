@@ -23,18 +23,23 @@
     </div>
     <header>
       <nav>
-        <h5 class="small">Repeater / Room server USB setup</h5>
+        <h5 class="small">Repeater / Room server setup</h5>
         <span class="max"></span>
         <button v-if="app.connected" @click="disconnect">
-          <i>usb_off</i><span>Disconnect</span>
+          <i>{{ app.via === 'wifi' ? 'wifi_off' : 'usb_off' }}</i><span>Disconnect</span>
         </button>
         <button v-else-if="app.connecting" disabled>
           <progress class="circle small"></progress>
           <span>Connecting...</span>
         </button>
-        <button v-else @click="connect">
-          <i>usb</i><span>Connect</span>
-        </button>
+        <template v-else>
+          <button @click="connect">
+            <i>usb</i><span class="m l">Connect USB</span>
+          </button>
+          <button class="border" @click="openNetDialog">
+            <i>wifi</i><span class="m l">Connect WiFi</span>
+          </button>
+        </template>
       </nav>
     </header>
 
@@ -138,6 +143,32 @@
           </button>
         </nav>
       </div>
+    </dialog>
+
+    <dialog ref="netDialog">
+      <header>
+        <nav>
+          <h6>Connect over WiFi</h6>
+          <span class="max"></span>
+          <button class="transparent circle" @click="netDialog.close()"><i>close</i></button>
+        </nav>
+      </header>
+      <p class="small-text">For nodes running the MeshCore collector WiFi build. Uses the node's admin password.</p>
+      <form @submit.prevent="connectNetwork">
+        <div class="field border label">
+          <input placeholder=" " v-model="net.host" autocomplete="off" spellcheck="false">
+          <label>Host or IP (e.g. my-node.local)</label>
+        </div>
+        <div class="field border label">
+          <input type="password" placeholder=" " v-model="net.password" autocomplete="current-password">
+          <label>Admin password</label>
+        </div>
+        <nav class="right-align">
+          <button type="submit" :disabled="!net.host || !net.password">
+            <i>wifi</i><span>Connect</span>
+          </button>
+        </nav>
+      </form>
     </dialog>
 
     <dialog ref="consoleDialog">

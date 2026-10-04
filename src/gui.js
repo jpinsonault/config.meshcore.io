@@ -1,5 +1,6 @@
 import { createApp, ref, reactive, onMounted, computed, watch } from '../lib/vue.esm-browser.js';
 import { SerialCLI } from '../lib/serial-cli.js';
+import { WebSocketPort } from '../lib/ws-port.js';
 import { VanityKeyGenerator } from '../lib/vanity-key-generator.js';
 import {
   ROOT_UID, isValidRegionName, regionDescendants, regionParentOptions,
@@ -41,6 +42,7 @@ createApp({
     const app = window.app = reactive({
       connecting: false,
       connected: false,
+      via: '',   // 'usb' or 'wifi'
       locked: true,
       showAdvanced: localStorage.getItem('show.advanced') === '1',
       busy: '',
@@ -1101,10 +1103,30 @@ createApp({
       showMessage(`Device replied: ${reply}`, 'info');
     }
 
-    const connect = async() => {
+    // Connect over WiFi to a collector repeater build (ws://<host>/ws). Same CLI as USB.
+    const netDialog = ref();
+    const net = reactive({ host: localStorage.getItem('net.host') || '', password: '' });
+    const openNetDialog = () => netDialog.value.showModal();
+
+    const connectNetwork = async () => {
+      const host = net.host.trim();
+      if (!host || !net.password) return;
+      localStorage.setItem('net.host', host);
+      const url = host.includes('://') ? host : `ws://${host}/ws`;
+      const port = new WebSocketPort(url, net.password);
+      net.password = '';
+      netDialog.value.close();
+      await openDevice(port, 'wifi');
+    };
+
+    const connect = () => openDevice(null, 'usb');
+
+    const openDevice = async (port, via) => {
       app.connecting = true;
       try {
-        await cli.connect();
+        const ok = await cli.connect(115200, port);
+        if (ok === false) throw new Error('No serial port selected');
+        app.via = via;
         await cli.setTime((Date.now() / 1000) | 0);
         showMessage('Time sync: OK');
         await getData();
@@ -1326,6 +1348,7 @@ createApp({
 
     return {
       app, connect, disconnect,
+      netDialog, net, openNetDialog, connectNetwork,
       reboot, erase, sendAdvert, startOTA,
       statsDialog, stats, statsRows, openStats, refreshStats,
       setData, snackbar, showMessage, setRadioPreset,
