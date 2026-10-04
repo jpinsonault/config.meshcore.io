@@ -1125,7 +1125,7 @@ createApp({
       app.connecting = true;
       try {
         const ok = await cli.connect(115200, port);
-        if (ok === false) throw new Error('No serial port selected');
+        if (ok === false) throw cli.lastError || new Error('Could not connect');
         app.via = via;
         await cli.setTime((Date.now() / 1000) | 0);
         showMessage('Time sync: OK');
