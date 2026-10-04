@@ -270,3 +270,7 @@ dialog.stats-dialog {
   font-size: 0.95rem;
   line-height: 1.4;
 }
+
+.wifi-status {
+  word-break: break-all;
+}

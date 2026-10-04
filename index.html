@@ -383,6 +383,44 @@
           </div>
         </fieldset>
 
+        <fieldset :disabled="app.locked || wifi.busy" v-if="wifi.supported">
+          <legend>WiFi (collector build)</legend>
+          <p class="small-text wifi-status">{{ wifi.status }}</p>
+          <div class="row">
+            <div class="field border label max">
+              <input placeholder=" " v-model="wifi.ssid" autocomplete="off">
+              <label>Network name (SSID)</label>
+            </div>
+            <div class="field border label max">
+              <input type="password" placeholder=" " v-model="wifi.pass" autocomplete="new-password">
+              <label>WiFi password</label>
+              <div class="tooltip right max bottom" @click.stop>
+                Sent to the node when you press Connect, then cleared from this page.
+                Leave empty to keep the password already stored on the node.
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button @click="connectWifi" :disabled="!wifi.ssid">
+              <i>wifi</i>
+              <span>{{ wifi.busy ? 'Connecting...' : 'Connect' }}</span>
+              <div class="tooltip right max bottom" @click.stop>
+                Stores the network name and password on the node and joins the network.
+                Once connected, the collector and console are on TCP port 5005 and firmware
+                can be updated over WiFi. Both use the admin password.
+              </div>
+            </button>
+            <button class="border" @click="loadWifi">
+              <i>refresh</i>
+              <span>Refresh</span>
+            </button>
+            <button class="border" @click="wifiOff">
+              <i>wifi_off</i>
+              <span>Turn off</span>
+            </button>
+          </div>
+        </fieldset>
+
         <fieldset :disabled="app.locked" v-if="app.device.role === 'room-server'">
           <legend>Room server settings</legend>
           <div class="actions">

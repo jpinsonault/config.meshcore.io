@@ -441,6 +441,62 @@ createApp({
 
     const validateAcl = () => (acl.supported ? checkAcl(acl.list) : null);
 
+    // WiFi link of the MeshCore collector repeater build (COLLECTOR_WIFI). Stock firmware
+    // doesn't know "wifi status", so the section stays hidden there.
+    const wifi = reactive({ supported: false, status: '', ssid: '', pass: '', busy: false });
+
+    const loadWifi = async () => {
+      try {
+        const reply = await cli.sendCommand('wifi status', { timeoutMs: 3000 });
+        wifi.supported = reply.startsWith('wifi ');
+        wifi.status = wifi.supported ? reply : '';
+        const m = reply.match(/ssid=(.*?)(?: ip=| \(status|$)/);
+        if (m && !wifi.ssid) wifi.ssid = m[1];
+      } catch (e) {
+        wifi.supported = false;
+      }
+    };
+
+    const connectWifi = async () => {
+      if (!wifi.ssid) return;
+      wifi.busy = true;
+      try {
+        const steps = [`wifi ssid ${wifi.ssid}`];
+        if (wifi.pass) steps.push(`wifi pass ${wifi.pass}`);
+        steps.push('wifi on');
+        for (const cmd of steps) {
+          const reply = await cli.sendCommand(cmd);
+          if (/^err/i.test(reply)) throw new Error(reply);
+        }
+        wifi.pass = '';
+        // DHCP usually takes a few seconds
+        for (let i = 0; i < 15; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await loadWifi();
+          if (wifi.status.startsWith('wifi connected')) break;
+        }
+        if (wifi.status.startsWith('wifi connected')) {
+          showMessage('WiFi connected', 'wifi');
+        } else {
+          showMessage('Not connected yet - check the network name and password', 'wifi_off');
+        }
+      } catch (err) {
+        showMessage(`WiFi: ${err.message}`, 'error');
+      } finally {
+        wifi.busy = false;
+      }
+    };
+
+    const wifiOff = async () => {
+      wifi.busy = true;
+      try {
+        await cli.sendCommand('wifi off');
+        await loadWifi();
+      } finally {
+        wifi.busy = false;
+      }
+    };
+
     const getData = async() => {
       app.busy = 'Reading configuration...';
       const vars = app.device.vars;
@@ -513,6 +569,7 @@ createApp({
 
       await loadRegions();
       await loadAcl();
+      await loadWifi();
       app.busy = '';
     }
 
@@ -1076,6 +1133,8 @@ createApp({
       // device / session
       'ver', 'board', 'reboot', 'clkreboot', 'poweroff', 'shutdown',
       'clock', 'clock sync', 'time', 'start ota', 'erase',
+      // collector repeater WiFi build
+      'wifi status', 'wifi on', 'wifi off', 'wifi ssid ', 'wifi pass ',
       'advert', 'advert.zerohop', 'password',
       'neighbors', 'neighbor.remove', 'discover.neighbors',
       'clear stats', 'stats-core', 'stats-radio', 'stats-packets',
@@ -1283,7 +1342,8 @@ createApp({
       consoleDialog, consoleOutput, consoleCmdInput, consoleLog, consoleCmd, consoleBusy,
       openConsole, sendConsoleCmd, consoleHistoryUp, consoleHistoryDown, regionLoadMode,
       consoleFocus, consoleCopy, consoleTab, consoleSuggestion,
-      supportsVar, hasVar
+      supportsVar, hasVar,
+      wifi, loadWifi, connectWifi, wifiOff
     }
   },
 }).mount('#app');
